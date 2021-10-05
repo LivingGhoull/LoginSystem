@@ -1,0 +1,22 @@
+{
+  "name": "loginSystem",
+  "version": "1.0.0",
+  "description": "",
+  "main": "create.js",
+  "dependencies": {
+    "bcrypt": "^5.0.1",
+    "crypto": "^1.0.1",
+    "express": "^4.17.1",
+    "express-session": "^1.17.2",
+    "mysql": "^2.18.1",
+    "nodemon": "^2.0.12",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "nodemon login.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
