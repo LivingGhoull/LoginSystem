@@ -6,6 +6,9 @@ var session = require('express-session');
 var bodyParser = require('body-parser');
 var path = require('path');
 var bcrypt = require('bcrypt');
+const nodemailer = require("nodemailer");
+
+
 
 //creates a connection to the database
 var connection = mysql.createConnection({
@@ -27,19 +30,20 @@ app.use(bodyParser.urlencoded({extended : true}));
 app.use(bodyParser.json());
 
 //makes all files in public folder reachebal now
-app.use(express.static(path.join(__dirname, '/root/css')));
+app.use(express.static(path.join(__dirname, '../root/css')));
+
+app.set('views', path.join(__dirname, '../root/pages/'));
+app.set('view engine', 'ejs');
 
 // When on localhost will it activate login.html
 app.get('/', function(request, response) {
-	response.sendFile(path.join(__dirname + '/root/index.html'));
+	response.sendFile(path.join(__dirname, '../root/index.html'));
 });
 app.get('/createUser', function(request, response) {
-	response.sendFile(path.join(__dirname + '/root/pages/createUser.html'));
+	response.sendFile(path.join(__dirname,  '../root/pages/createUser.html'));
 });
 app.get('/homepage', function(request, response) {
-//	response.send('Welcome back, ' + request.session.username + '!');
-	response.sendFile(path.join(__dirname + '/root/pages/homepage.html'));
-	
+	response.render('homepage', {username: request.session.username});
 });
 
 // Gets the post form from login.html
@@ -71,6 +75,7 @@ function login(result, request, response, username){
 	response.end();
 }
 
+
 app.post('/createUser', function(request, response) {
 	var username = request.body.username;
 	var password = request.body.password;
@@ -92,13 +97,13 @@ app.post('/createUser', function(request, response) {
 			response.end();
 		});
 	} else {
+		emailsender();
 		response.send('Password and the repeated password is not the same!!!');
 		response.end();
 	}
 });
 
 app.get('/homepage', function(request, response) {
-
 	if (request.session.loggedin) {
 		console.log("in");
 		response.send('Welcome back, ' + request.session.username + '!');
@@ -108,6 +113,8 @@ app.get('/homepage', function(request, response) {
 	}
 	response.end();
 });
+
+
 
 //listen to port 3000
 app.listen(3000);
