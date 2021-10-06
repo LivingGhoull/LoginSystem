@@ -6,9 +6,9 @@ var session = require('express-session');
 var bodyParser = require('body-parser');
 var path = require('path');
 var bcrypt = require('bcrypt');
-const nodemailer = require("nodemailer");
-
-
+var crypto = require('crypto');
+var nodemailer = require('nodemailer');
+require('dotenv').config();
 
 //creates a connection to the database
 var connection = mysql.createConnection({
@@ -75,13 +75,14 @@ function login(result, request, response, username){
 	response.end();
 }
 
-
 app.post('/createUser', function(request, response) {
 	var username = request.body.username;
 	var password = request.body.password;
 	var passwordCheck = request.body.passwordCheck;
 	var email = request.body.email;
-
+	var isActive = false;
+	var emailToken = crypto.randomBytes(64).toString('hex');
+	console.log(emailToken);
 	if (password == passwordCheck) {
 		connection.query('SELECT * FROM accounts WHERE username = ? OR email = ?', [username, email], function(error, results, fields) {
 			if (results.length > 0) {
@@ -89,19 +90,61 @@ app.post('/createUser', function(request, response) {
 			} else {
 				bcrypt.genSalt().then(salt => {
 					bcrypt.hash(password, salt).then(hash =>{
-						connection.query('INSERT INTO accounts (username, password, email) VALUES(?,?,?)', [username, hash, email]);
+						connection.query('INSERT INTO accounts (username, password, email, isActive, emailToken) VALUES(?,?,?,?,?)', [username, hash, email, isActive, emailToken]);
 					});
 				})
+
+				let transport = nodemailer.createTransport({
+					service: "Hotmail",
+					auth: {
+						user: process.env.EMAIL,
+						pass: process.env.PASSWORD,
+					},	
+				});
+
+				let mailOption = {
+					from: 'jezper@hotmail.dk',
+					to: email,
+					subject: 'Confirm to access the website',
+					text: `
+						This is a message for creating a user for the website
+						please click the link below if you whant to activate your user
+
+						http://${require.header.host}/verify-email?token=${emailToken}
+					`
+				}
+
+				transport.sendMail(mailOption, function(err, data){
+					if(err){
+						console.log("Error came: ", err);
+					}
+					else{
+						console.log("email is sent")
+					}
+				});
+
 				response.redirect('/');
 			}			
 			response.end();
 		});
 	} else {
-		emailsender();
 		response.send('Password and the repeated password is not the same!!!');
 		response.end();
 	}
 });
+
+app.get('/verify-email', function(request, response){
+	var user = connection.query('SELECT * FROM accounts WHERE emailToken = ?', [require.query.token]);
+	console.log(user)
+	try {
+		if (!user) {
+			console.log("token is not valid");
+		}
+		connection.query('UPDATE accounts SET isActive = true, emailToken = NULL');
+	} catch (error) {
+		
+	}
+})
 
 app.get('/homepage', function(request, response) {
 	if (request.session.loggedin) {
@@ -113,7 +156,6 @@ app.get('/homepage', function(request, response) {
 	}
 	response.end();
 });
-
 
 
 //listen to port 3000
