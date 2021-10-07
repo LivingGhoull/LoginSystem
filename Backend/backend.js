@@ -1,3 +1,5 @@
+//https://www.google.com/search?q=node.js+cant+console.log+out&rlz=1C1GCEU_daDK972DK972&oq=node.js+cant+console.log+out+&aqs=chrome..69i57j33i22i29i30.8617j0j7&sourceid=chrome&ie=UTF-8
+
 // after importing of node package manager(npm) require to find them from the node_modules 
 var mysql = require('mysql');
 var express = require('express');
@@ -32,6 +34,7 @@ app.use(bodyParser.json());
 //makes all files in public folder reachebal now
 app.use(express.static(path.join(__dirname, '../root/css')));
 
+
 app.set('views', path.join(__dirname, '../root/pages/'));
 app.set('view engine', 'ejs');
 
@@ -45,9 +48,15 @@ app.get('/createUser', function(request, response) {
 app.get('/homepage', function(request, response) {
 	response.render('homepage', {username: request.session.username});
 });
+app.get('/verify-email/:token', function(request, response) {
+	console.log(re1.params);
+	response.send("dwa");
+	//response.render('homepage', {username: request.session.username});
+});
 
 // Gets the post form from login.html
 app.post('/login', function(request, response) {
+	console.log(require.url);
 	var username = request.body.username;
 	var password = request.body.password;
 	if (username && password) {
@@ -82,7 +91,6 @@ app.post('/createUser', function(request, response) {
 	var email = request.body.email;
 	var isActive = false;
 	var emailToken = crypto.randomBytes(64).toString('hex');
-	console.log(emailToken);
 	if (password == passwordCheck) {
 		connection.query('SELECT * FROM accounts WHERE username = ? OR email = ?', [username, email], function(error, results, fields) {
 			if (results.length > 0) {
@@ -110,8 +118,8 @@ app.post('/createUser', function(request, response) {
 						This is a message for creating a user for the website
 						please click the link below if you whant to activate your user
 
-						http://${require.header.host}/verify-email?token=${emailToken}
-					`
+						http://localhost:3000/verify-email?token=${emailToken}
+					`,				
 				}
 
 				transport.sendMail(mailOption, function(err, data){
@@ -121,8 +129,8 @@ app.post('/createUser', function(request, response) {
 					else{
 						console.log("email is sent")
 					}
+					
 				});
-
 				response.redirect('/');
 			}			
 			response.end();
@@ -133,25 +141,25 @@ app.post('/createUser', function(request, response) {
 	}
 });
 
-app.get('/verify-email', function(request, response){
-	var user = connection.query('SELECT * FROM accounts WHERE emailToken = ?', [require.query.token]);
-	console.log(user)
+app.get('/verify-email/:token', function(request, response){
+	response.send("awd");
+	var urlToken = request.params.token
+	var users = connection.query('SELECT * FROM accounts WHERE emailToken = ?', [urlToken]);
+	console.log(users.length);
 	try {
-		if (!user) {
-			console.log("token is not valid");
+		if (users.length > 0) {
+			connection.query('UPDATE accounts SET isActive = true, emailToken = NULL WHERE emailToken = ?', [urlToken]);
 		}
-		connection.query('UPDATE accounts SET isActive = true, emailToken = NULL');
-	} catch (error) {
-		
+	} catch (err) {
+		response.send(err);
 	}
+	response.end();
 })
 
 app.get('/homepage', function(request, response) {
 	if (request.session.loggedin) {
-		console.log("in");
 		response.send('Welcome back, ' + request.session.username + '!');
 	} else {
-		console.log("out");
 		response.send('Please login to view this page!');
 	}
 	response.end();
