@@ -10,6 +10,7 @@ var path = require('path');
 var bcrypt = require('bcrypt');
 var crypto = require('crypto');
 var nodemailer = require('nodemailer');
+const { query } = require('express');
 require('dotenv').config();
 
 //creates a connection to the database
@@ -48,27 +49,36 @@ app.get('/createUser', function(request, response) {
 app.get('/homepage', function(request, response) {
 	response.render('homepage', {username: request.session.username});
 });
-app.get('/verify-email/:token', function(request, response) {
-	console.log(re1.params);
-	response.send("dwa");
-	//response.render('homepage', {username: request.session.username});
+app.get('/verify-email', function(request, response) {
+	connection.query("SELECT * FROM accounts WHERE emailToken = ?", [request.query.token], function(err, result, fields){
+		if (result[0]) {
+			connection.query("UPDATE accounts SET emailToken=NULL ,isActive=1 WHERE id = ?", [result[0]["id"]]);
+			response.render('homepage', {username: result[0]["username"]});
+		}
+		else{
+			response.send("acoount is already set acktive")
+		}
+	})
 });
 
 // Gets the post form from login.html
 app.post('/login', function(request, response) {
-	console.log(require.url);
-	var username = request.body.username;
-	var password = request.body.password;
-	if (username && password) {
-		connection.query('SELECT password FROM accounts WHERE username = ?', [username], function(error, results, fields) {
-			bcrypt.genSalt(12).then(salt => {
-				bcrypt.hash(password, salt).then(hash => {
-					bcrypt.compare(password, results[0]["password"]).then(result => login(result, request, response, username));
-				});
-			})
-		});
-	} else {
-		response.send('Please enter Username and Password!');
+	try {
+		var username = request.body.username;
+		var password = request.body.password;
+		if (username && password) {
+			connection.query('SELECT * FROM accounts WHERE username = ?', [username], function(error, results, fields) {
+				if (results[0]['isActive']) {
+					bcrypt.genSalt(12).then(salt => {
+						bcrypt.hash(password, salt).then(hash => {
+							bcrypt.compare(password, results[0]["password"]).then(result => login(result, request, response, username));
+						});
+					})
+				}
+			});
+		}
+	} catch (error) {
+		response.send("error");
 		response.end();
 	}
 });
@@ -140,31 +150,6 @@ app.post('/createUser', function(request, response) {
 		response.end();
 	}
 });
-
-app.get('/verify-email/:token', function(request, response){
-	response.send("awd");
-	var urlToken = request.params.token
-	var users = connection.query('SELECT * FROM accounts WHERE emailToken = ?', [urlToken]);
-	console.log(users.length);
-	try {
-		if (users.length > 0) {
-			connection.query('UPDATE accounts SET isActive = true, emailToken = NULL WHERE emailToken = ?', [urlToken]);
-		}
-	} catch (err) {
-		response.send(err);
-	}
-	response.end();
-})
-
-app.get('/homepage', function(request, response) {
-	if (request.session.loggedin) {
-		response.send('Welcome back, ' + request.session.username + '!');
-	} else {
-		response.send('Please login to view this page!');
-	}
-	response.end();
-});
-
 
 //listen to port 3000
 app.listen(3000);
