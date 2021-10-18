@@ -1,7 +1,6 @@
 //https://www.google.com/search?q=node.js+cant+console.log+out&rlz=1C1GCEU_daDK972DK972&oq=node.js+cant+console.log+out+&aqs=chrome..69i57j33i22i29i30.8617j0j7&sourceid=chrome&ie=UTF-8
 
 // after importing of node package manager(npm) require to find them from the node_modules 
-var mysql = require('mysql');
 var express = require('express');
 var app = express();
 var session = require('express-session');
@@ -13,13 +12,8 @@ var nodemailer = require('nodemailer');
 const { query } = require('express');
 require('dotenv').config();
 
-//creates a connection to the database
-var connection = mysql.createConnection({
-	host     : 'localhost',
-	user     : 'root',
-	password : '',
-	database : 'nodelogin'
-});
+const mysql = require('./additional/databaseConnection.js');
+const conn = mysql.con();
 
 // Creates a session
 app.use(session({
@@ -35,7 +29,6 @@ app.use(bodyParser.json());
 //makes all files in public folder reachebal now
 app.use(express.static(path.join(__dirname, '../root/css')));
 
-
 app.set('views', path.join(__dirname, '../root/pages/'));
 app.set('view engine', 'ejs');
 
@@ -47,12 +40,17 @@ app.get('/createUser', function(request, response) {
 	response.sendFile(path.join(__dirname,  '../root/pages/createUser.html'));
 });
 app.get('/homepage', function(request, response) {
-	response.render('homepage', {username: request.session.username});
+	if (request.session.loggedin) {
+		response.render('homepage', {username: request.session.username});
+	}
+	else{
+		response.redirect("/");
+	}
 });
 app.get('/verify-email', function(request, response) {
-	connection.query("SELECT * FROM accounts WHERE emailToken = ?", [request.query.token], function(err, result, fields){
+	conn.query("SELECT * FROM accounts WHERE emailToken = ?", [request.query.token], function(err, result, fields){
 		if (result[0]) {
-			connection.query("UPDATE accounts SET emailToken=NULL ,isActive=1 WHERE id = ?", [result[0]["id"]]);
+			conn.query("UPDATE accounts SET emailToken=NULL ,isActive=1 WHERE id = ?", [result[0]["id"]]);
 			response.render('homepage', {username: result[0]["username"]});
 		}
 		else{
@@ -63,24 +61,21 @@ app.get('/verify-email', function(request, response) {
 
 // Gets the post form from login.html
 app.post('/login', function(request, response) {
-	try {
 		var username = request.body.username;
 		var password = request.body.password;
-		if (username && password) {
-			connection.query('SELECT * FROM accounts WHERE username = ?', [username], function(error, results, fields) {
-				if (results[0]['isActive']) {
-					bcrypt.genSalt(12).then(salt => {
-						bcrypt.hash(password, salt).then(hash => {
-							bcrypt.compare(password, results[0]["password"]).then(result => login(result, request, response, username));
-						});
-					})
-				}
-			});
-		}
-	} catch (error) {
-		response.send("error");
-		response.end();
-	}
+
+		conn.query('SELECT * FROM accounts WHERE username = ?', [username], function(error, results, fields) {
+			if (results[0] != null) {
+				bcrypt.genSalt(12).then(salt => {
+					bcrypt.hash(password, salt).then(hash => {
+						bcrypt.compare(password, results[0]["password"]).then(result => login(result, request, response, username));
+					});
+				})
+			}
+			else{
+				response.redirect('/');
+			}
+		});
 });
 
 function login(result, request, response, username){
@@ -99,16 +94,15 @@ app.post('/createUser', function(request, response) {
 	var password = request.body.password;
 	var passwordCheck = request.body.passwordCheck;
 	var email = request.body.email;
-	var isActive = false;
 	var emailToken = crypto.randomBytes(64).toString('hex');
 	if (password == passwordCheck) {
-		connection.query('SELECT * FROM accounts WHERE username = ? OR email = ?', [username, email], function(error, results, fields) {
+		conn.query('SELECT * FROM accounts WHERE username = ? OR email = ?', [username, email], function(error, results, fields) {
 			if (results.length > 0) {
 				response.send('User alredy exist!!!');
 			} else {
 				bcrypt.genSalt().then(salt => {
 					bcrypt.hash(password, salt).then(hash =>{
-						connection.query('INSERT INTO accounts (username, password, email, isActive, emailToken) VALUES(?,?,?,?,?)', [username, hash, email, isActive, emailToken]);
+						conn.query('INSERT INTO accounts (username, password, email, isActive, emailToken) VALUES(?,?,?,?,?)', [username, hash, email, false, emailToken]);
 					});
 				})
 
