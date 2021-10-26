@@ -28,6 +28,8 @@ app.use(bodyParser.json());
 
 //makes all files in public folder reachebal
 app.use(express.static(path.join(__dirname, '../root/css')));
+app.use(express.static(path.join(__dirname, '../root/scripts')));
+
 
 app.set('views', path.join(__dirname, '../root/pages/'));
 app.set('view engine', 'ejs');

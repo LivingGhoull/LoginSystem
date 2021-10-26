@@ -5,12 +5,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/homepage.css">
+    <script src="/logout.js"></script>
     <title>Homepage</title>
 </head>
 <body>
     <div id="navbar">
         <a href="/homepage"><b>Home</b></a>
-
        <div class="dropdown">
             <button class="dropbtn"><b><%= username %></b></button>
             <div class="dropdown-content">
@@ -18,9 +18,7 @@
               <a href="/">Logout</a>
             </div>
         </div>
-    
     </div>
-    
     <div id="homepageInformation">
         <h1 id="usernamee">Welcome <%= username %></h1>
         <p>this is my test website for node.js </p>
